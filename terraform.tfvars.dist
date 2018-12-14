@@ -1,0 +1,11 @@
+do_token="X"
+warrior_username="X"
+warrior_password="X"
+warrior_project="tumblr"
+warrior_concurrency="6" # MAX 6
+warrior_downloader="X"
+warriors_per_host="1"
+do_ssh_keys="X" # comma-separated list
+do_hosts="1"
+do_region="nyc3"
+do_host_type="s-6vcpu-16gb"
