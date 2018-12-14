@@ -79,6 +79,8 @@ data "template_file" "metrics_nodes" {
   vars {
     nodes = "${jsonencode(digitalocean_droplet.archiveteam.*.ipv4_address)}"
     ports = "${var.warriors_per_host}"
+    username = "${var.warrior_username}"
+    password = "${var.warrior_password}"
   }
 }
 
@@ -98,6 +100,8 @@ resource "null_resource" "prometheus" {
 
   provisioner "remote-exec" {
     inline = [
+      "mkdir /prometheus || true",
+      "chmod -R 777 /prometheus || true",
       "docker stop prometheus && docker rm prometheus || true",
     ]
   }
@@ -109,7 +113,7 @@ resource "null_resource" "prometheus" {
 
   provisioner "remote-exec" {
     inline = [
-      "docker run -d --name prometheus --restart=always --net=host -v /prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus"
+      "docker run -d --name prometheus --restart=always --net=host -v /prometheus.yml:/etc/prometheus/prometheus.yml -v /prometheus:/prometheus prom/prometheus"
     ]
   }
 }
@@ -120,6 +124,7 @@ resource "null_resource" "ws_metrics" {
     ids = "${join(",", digitalocean_droplet.prometheus.*.id)}"
     metrics_script = "${sha1(file("metrics/metrics.js"))}"
     nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
+    warriors = "${var.warriors_per_host}"
   }
 
   depends_on = [
@@ -131,15 +136,15 @@ resource "null_resource" "ws_metrics" {
     host = "${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)}"
   }
 
-  provisioner "file" {
-    content = "${data.template_file.metrics_nodes.rendered}"
-    destination = "/metrics/metrics.js"
-  }
-
   provisioner "remote-exec" {
     inline = [
       "mkdir /metrics || true",
     ]
+  }
+
+  provisioner "file" {
+    content = "${data.template_file.metrics_nodes.rendered}"
+    destination = "/metrics/metrics.js"
   }
 
   provisioner "file" {
@@ -191,6 +196,7 @@ resource "null_resource" "warrior" {
     host = "${digitalocean_droplet.archiveteam.*.id[count.index]}"
     start_file = "${sha1(data.template_file.warrior_start_script.rendered)}"
     env = "${sha1(data.template_file.warrior_env.rendered)}"
+    warriors = "${var.warriors_per_host}"
   }
 
   connection {

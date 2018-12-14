@@ -109,8 +109,7 @@ function listen (host, port) {
   const get_version = (callback) => {
     request({
       url:'http://'+hostport+'/api/help',
-      // TODO Should be set from env var
-      auth: {user: 'user', pass: 'hunter2'}
+      auth: {user: '${username}', pass: '${password}'}
     }, (err, res, body) => {
       if (err) {
         console.log(err)
