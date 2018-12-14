@@ -11,7 +11,7 @@ variable "do_region" {}
 variable "do_host_type" {}
 
 variable "instance_name_prefix" {
-  default = "archive-team-dev"
+  default = "archive-team"
 }
 
 provider "digitalocean" {
