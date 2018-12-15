@@ -21,6 +21,7 @@ cache:
 before_script:
   - terraform --version
   - terraform init
+  - cp terraform.tfvars.dist terraform.tfvars
 
 stages:
   - validate
