@@ -23,10 +23,31 @@ server.listen(port, (err) => {
 })
 
 const hosts = ${nodes}
-// const hosts = ['localhost', '127.0.0.1']
+// const hosts = [
+//   '138.197.0.203',
+//   '142.93.187.235',
+//   '159.203.69.108',
+//   '104.248.2.97',
+//   '165.227.72.215',
+//   '159.203.163.210',
+//   '159.203.161.8',
+//   '142.93.67.185',
+//   '138.197.107.139',
+//   '165.227.124.236',
+//   '104.248.13.107',
+//   '104.248.8.78',
+//   '174.138.55.12',
+//   '104.248.0.83',
+//   '104.248.13.237',
+//   '165.227.124.136',
+//   '104.248.13.232',
+//   '104.248.13.30',
+//   '104.248.13.142',
+//   '104.248.13.116'
+// ]
 // The number of ports (number of warriors per host)
 const numberOfPorts = ${ports}
-// const numberOfPorts = 2
+// const numberOfPorts = 20
 
 const startingPort = 8000
 const ports = []
@@ -72,11 +93,12 @@ setInterval(() => {
       count[v.status] = count[v.status] + 1
     }
   })
+  console.log(count)
   Object.keys(count).forEach((status) => {
     const v = count[status]
     itemsGauge.set({status}, v)
   })
-}, 5000)
+}, 1000)
 
 function listen (host, port) {
   const r1 = Math.floor(Math.random() * 100)
@@ -110,6 +132,7 @@ function listen (host, port) {
     request({
       url:'http://'+hostport+'/api/help',
       auth: {user: '${username}', pass: '${password}'}
+      // auth: {user: 'diggan', pass: 'knullam32'}
     }, (err, res, body) => {
       if (err) {
         console.log(err)
@@ -120,7 +143,6 @@ function listen (host, port) {
         if (line.indexOf('Cloning version') !== -1) {
           foundLine = true
           version = line.split(' ')[9]
-          console.log('got version ' + version)
           if(callback) callback()
         }
       })
@@ -138,7 +160,9 @@ function listen (host, port) {
     ws.on('message', function incoming(data) {
       try {
         const parsed = JSON.parse(JSON.parse(data.substring(1))[0])
+        let found = false
         if (parsed.event_name === 'bandwidth') {
+          found = true
           const {received, sent} = parsed.message
           const {receiving, sending} = parsed.message
           sentGauge.set({host, port, version}, sent)
@@ -146,25 +170,74 @@ function listen (host, port) {
           sendingGauge.set({host, port, version}, sending)
           receivingGauge.set({host, port, version}, receiving)
         }
-        if (parsed.event_name === 'project.refresh') {
-          const recItems = parsed.message.items
-          recItems.forEach((i) => {
-            let status = 'Unknown'
-            i.tasks.forEach((t) => {
-              if (t.status === 'running') {
-                status = t.name
-              }
-            })
-            const name = i.name.split(' ')[1]
-            items[name] = {
+        // if (parsed.event_name === 'project.refresh') {
+        //   // console.log('project.refresh')
+        //   found = true
+        //   // console.log(parsed)
+        //   let recItems = parsed.message.items
+        //   recItems = recItems.map((i) => {
+        //     return Object.assign({}, i, {output: 'lots'})
+        //   })
+
+        //   // console.log(JSON.stringify(recItems, null, 2))
+        //   recItems.forEach((i) => {
+        //     let status = 'Unknown'
+        //     i.tasks.forEach((t) => {
+        //       if (t.status === 'running') {
+        //         status = t.name
+        //       }
+        //     })
+        //     // const name = i.name.split(' ')[1]
+        //     items[i.id] = {
+        //       host,
+        //       port,
+        //       status
+        //     }
+        //   })
+        // }
+        const ignoredMessages = [
+          'item.output',
+          'timestamp',
+          'warrior.status',
+          'warrior.broadcast_message',
+          // 'warrior.projects_loaded',
+          // 'project.refresh'
+        ]
+        if (ignoredMessages.includes(parsed.event_name)) {
+          found = true
+        }
+        if (parsed.event_name === 'item.task_status') {
+          // console.log('item.task_status')
+          found = true
+          // console.log(parsed)
+          const message = parsed.message
+          // console.log(message.new_status)
+          if (!items[message.item_id]) {
+            items[message.item_id] = {
               host,
               port,
-              status
+              status: 'Unknown'
             }
-          })
+          }
+
+          items[message.item_id].status = message.new_status
+          // if (message.new_status === 'running') {
+          // }
+          // if (message.new_status === 'completed') {
+          //   items[message.item_id].status = 'SendDoneToTracker'
+          // }
+          // if (message.new_status === 'failed') {
+          //   items[message.item_id].status = 'Failed'
+          // }
+        }
+
+        if (!found) {
+          console.log('unknown event', parsed.event_name)
         }
       } catch (err) {
-        console.log(err)
+        if (err.toString().indexOf('SyntaxError') === -1) {
+          console.log(err)
+        }
       }
     })
   })
