@@ -226,3 +226,7 @@ resource "null_resource" "warrior" {
 output "ips" {
   value = "${digitalocean_droplet.archiveteam.*.ipv4_address}"
 }
+
+output "prometheus" {
+  value = "${digitalocean_droplet.prometheus.ipv4_address}"
+}
