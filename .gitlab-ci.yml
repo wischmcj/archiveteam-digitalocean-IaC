@@ -36,7 +36,7 @@ validate:
 plan:
   stage: build
   script:
-    - terraform plan -out=$PLAN
+    - terraform plan -var "do_token=$do_token" -var "do_ssh_keys=$do_ssh_keys" -var "warrior_username=$warrior_username" -var "warrior_password=$warrior_password" -var "warrior_downloader=$warrior_downloader" -out=$PLAN
   artifacts:
     name: plan
     paths:
@@ -49,7 +49,7 @@ apply:
   environment:
     name: production
   script:
-    - terraform apply -input=false -var "do_token=$do_token" -var "do_ssh_keys=$do_ssh_keys" -var "warrior_username=$warrior_username" -var "warrior_password=$warrior_password" -var "warrior_downloader=$warrior_downloader" $PLAN
+    - terraform apply $PLAN
   dependencies:
     - plan
   when: manual
