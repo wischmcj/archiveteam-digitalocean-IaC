@@ -125,6 +125,7 @@ resource "null_resource" "ws_metrics" {
     metrics_script = "${sha1(file("metrics/metrics.js"))}"
     nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
     warriors = "${var.warriors_per_host}"
+    warrior_concurrency = "${var.warrior_concurrency}"
   }
 
   depends_on = [
