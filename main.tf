@@ -95,36 +95,35 @@ resource "null_resource" "prometheus" {
   # connection {
   #   host = "${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)}"
   # }
-
-  connection {
-    host ="${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)}"
-    user = "root"
-    type = "ssh"
-    private_key = file(var.do_pvt_key)
-    timeout = "1m"
-  }
   
   provisioner "remote-exec" {
     # command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${self.ipv4_address}' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
- 
+    connection {
+      host ="${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)}"
+      user = "root"
+      type = "ssh"
+      private_key = file(var.do_pvt_key)
+      timeout = "1m"
+    }
     inline = [
       "docker stop prometheus && docker rm prometheus || true",
     ]
   }
 
-  provisioner "file" {
-    content = templatefile("metrics/prometheus.yml",
-    {
-      nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
-    })
-    # content =  module.template_files.files.prom_nodes
-    destination = "/prometheus.yml"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "docker run -d --name prometheus --restart=always --net=host -v /prometheus.yml:/etc/prometheus/prometheus.yml -v /prometheus:/prometheus prom/prometheus"
-    ]
+  # provisioner "file" {
+  #   content = templatefile("metrics/prometheus.yml",
+  #   {
+  #     nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
+  #   })
+  #   # content =  module.template_files.files.prom_nodes
+  #   destination = "/prometheus.yml"
+  # }
+# "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/prometheus.yml"
+    # inline = [
+    #   "docker run -d --name prometheus --restart=always --net=host -v /prometheus.yml:/etc/prometheus/prometheus.yml -v /prometheus:/prometheus prom/prometheus"
+    # ]
   }
 }
 
@@ -188,9 +187,7 @@ resource "null_resource" "warrior" {
     #  the warrior container, returning metrics to prometheus
     inline = [
       # "docker stop exporter && docker rm exporter || true",
-      "docker run -d --name exporter 
-      --net=host --pid=host -v '/:/host:ro,rslave' 
-       prom/node-exporter --path.rootfs /host",
+      "docker run -d --name exporter --net=host --pid=host -v '/:/host:ro,rslave'  prom/node-exporter --path.rootfs /host",
       "chmod +x /tmp/start.sh",
       "/tmp/start.sh",
     ]
@@ -246,9 +243,7 @@ resource "null_resource" "ws_metrics" {
   provisioner "remote-exec" {
     inline = [
       "docker stop metrics && docker rm metrics || true",
-      "docker run -d --restart=always --net=host
-       --name metrics -v /metrics:/usr/src/app 
-       -w /usr/src/app node:8 bash -c 'npm install && node metrics.js'",
+      "docker run -d --restart=always --net=host --name metrics -v /metrics:/usr/src/app -w /usr/src/app node:8 bash -c 'npm install && node metrics.js'",
     ]
   }
 }
