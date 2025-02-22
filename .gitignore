@@ -3,3 +3,9 @@ metrics/node_modules/
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfvars
+.envrc
+id_rsa_digitalocean.pub
+ansible/inventory/setup_hosts.ini
+ansible/inventory/cluster.ini
+ansible/local_ansible.cfg
+inputs.tfvars
