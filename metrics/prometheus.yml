@@ -11,5 +11,7 @@ scrape_configs:
       - targets: ${nodes}
   - job_name: ws_metrics
     metrics_path: /
+    fallback_scrape_protocol: PrometheusText1.0.0
+    # PrometheusProto, OpenMetricsText0.0.1, OpenMetricsText1.0.0, PrometheusText0.0.4, PrometheusText1.0.0
     static_configs:
-      - targets: ["localhost:3000"]
+      - targets: ["127.0.0.1:3000"]

@@ -52,9 +52,11 @@ const numberOfPorts = ${ports}
 const startingPort = 8000
 const ports = []
 
+// add ports sequentially, one for each droplet
 for(var i = 1; i < numberOfPorts + 1; i++) {
-  ports.push(startingPort + i)
+  ports.push(32770)
 }
+// Set up basic gauges for data transfer
 const sentGauge = new client.Gauge({
   name: 'sent',
   help: 'sent data in bytes',
@@ -75,13 +77,15 @@ const receivingGauge = new client.Gauge({
   help: 'receiving data in bytes',
   labelNames: ['host', 'port', 'version']
 });
-
+// Guage for archiveteam items e.g. urls
 const itemsGauge = new client.Gauge({
   name: 'items',
   help: 'items being worked on',
   labelNames: ['status']
 });
 
+// create map with a key for each item status
+// increment vals to show # items in each status
 const items = {}
 setInterval(() => {
   const count = {}
@@ -99,7 +103,7 @@ setInterval(() => {
     itemsGauge.set({status}, v)
   })
 }, 1000)
-
+// 
 function listen (host, port) {
   const r1 = Math.floor(Math.random() * 100)
   const r2 = Math.floor(Math.random() * 100)
@@ -116,9 +120,10 @@ function listen (host, port) {
   }
 
   ws.on('error', (err) => {
+    console.error(err)
     retry(err)
   })
-
+  // standardize file size text
   function bytesToSize(bytes) {
      var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
      if (bytes == 0) return '0 Byte';
@@ -126,7 +131,7 @@ function listen (host, port) {
      return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
   };
 
-
+ //look for line containing 'Cloning Version', extract following text
   let version = 'unknown'
   const get_version = (callback) => {
     request({
@@ -151,6 +156,8 @@ function listen (host, port) {
       }
     })
   }
+  // define behavior when msgs are recieved 
+  // behavior varies based on event name
   setInterval(get_version, 1000 * 60)
   get_version(() => {
     sentGauge.set({host, port, version}, 0)

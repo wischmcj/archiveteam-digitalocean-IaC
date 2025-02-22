@@ -12,11 +12,8 @@ Copy `terraform.tfvars.dist` to `terraform.tfvars`, filling out the wanted value
 
 Now run `terraform apply`. Once it's done, you're helping! Congratz.
 
-## TODO
+## Validation
 
-> What is missing, what would make this project better?
+    To confirm docker is installed/running, run 'docker ps -a'
 
-- [ ] Integrated dashboard with Grafana
-- [ ] Federated dashboard with prometheus, integrating many deployments into one dashboard
-
-### LICENSE: MIT (2018) DIGGAN
+    To confirm digital ocean metrics agent is installed/running, run 'ps aux | grep do-agent'
