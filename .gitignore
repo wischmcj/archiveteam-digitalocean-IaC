@@ -1,4 +1,9 @@
-
+metrics/node_modules/
+ansible/inventory/setup_hosts.ini
+ansible/inventory/cluster.ini
+ansible/local_ansible.cfg
+.envrc
+*.pub
 # Local .terraform directories
 **/.terraform/*
 
@@ -17,33 +22,5 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 
-# Ignore override files as they are usually used to override resources locally and so
-# are not checked in
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
 # Ignore transient lock info files created by terraform apply
 .terraform.tfstate.lock.info
-
-# Include override files you do wish to add to version control using negated pattern
-# !example_override.tf
-
-# Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
-# example: *tfplan*
-
-# Ignore CLI configuration files
-.terraformrc
-terraform.rc
-.terraform/
-metrics/node_modules/
-terraform.tfstate
-terraform.tfstate.backup
-terraform.tfvars
-.envrc
-id_rsa_digitalocean.pub
-ansible/inventory/setup_hosts.ini
-ansible/inventory/cluster.ini
-ansible/local_ansible.cfg
-inputs.tfvars
