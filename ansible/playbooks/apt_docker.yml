@@ -72,7 +72,7 @@
 
     - name: Wait for apt to unlock
       become: true
-      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done;
 
     - name: Update apt and install docker-ce
       ansible.builtin.apt:
