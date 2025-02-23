@@ -7,25 +7,6 @@
     default_container_image: ubuntu
     default_container_command: sleep 1d
   tasks:
-    # - name: Install aptitude
-    #   apt:
-    #     name: aptitude
-    #     state: latest
-    #     update_cache: true
-
-    # - name: Install required system packages
-    #   apt:
-    #     pkg:
-    #       - apt-transport-https
-    #       - ca-certificates
-    #       - curl
-    #       - software-properties-common
-    #       - python3-pip
-    #       - virtualenv
-    #       - python3-setuptools
-    #       - urllib3
-    #     state: latest
-    #     update_cache: true
 
     - name: Add wischmcj to 'sudo'
       ansible.builtin.user:
@@ -44,7 +25,7 @@
     #   ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
 
     - name: Install required system packages
-      apt:
+      ansible.builtin.apt:
         pkg:
           - apt-transport-https
           - ca-certificates
@@ -74,7 +55,7 @@
       become: true
       ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done;
 
-    - name: Update apt and install docker-ce
+    - name: Install docker-ce
       ansible.builtin.apt:
         name: docker-ce
         state: latest
