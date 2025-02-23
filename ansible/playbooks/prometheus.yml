@@ -8,91 +8,79 @@
     default_container_command: sleep 1d
     prometheus_config_template: "../templates/prometheus.yml"
     prometheus_config: "/prometheus.yml"
+    grafana_config_template: "../roles/observer/templates/grafana/all.yml"
+    grafana_source: "../roles/observer/files/grafana"
     # prometheus_remote_path: "/prometheus.yml"
     # prometheus_directory: "/prometheus"
     # docker_container_name: "prometheus"
   tasks:
-  - name: Create Folder /srv/prometheus if not exist
-    ansible.builtin.file:
-      path: /srv/prometheus
-      mode: 0755
-      state: directory
+    - name: Create Folder /srv/prometheus if not exist
+      ansible.builtin.file:
+        path: /srv/prometheus
+        mode: '0755'
+        state: directory
 
-  - name: Create Folder /srv/grafana if not exist
-    ansible.builtin.file:
-      path: /srv/grafana
-      mode: 0755
-      state: directory
+    - name: Create Folder /srv/grafana if not exist
+      ansible.builtin.file:
+        path: /srv/grafana
+        mode: '0755'
+        state: directory
 
-  - name: Create Folder /srv/alertmanager if not exist
-    ansible.builtin.file:
-      path: /srv/alertmanager
-      mode: 0755
-      state: directory
+    - name: Generate Prometheus config from template
+      ansible.builtin.template:
+        src: "{{ prometheus_config_template }}"
+        dest: /srv/prometheus/prometheus.yml
+        mode: '0644'
 
-  - name: Remove a container
-    community.docker.docker_container:
-      name: "{{ docker_container_name }}"
-      state: absent
+    - name: Create grafana configuration files
+      ansible.builtin.copy:
+        src: "{{ grafana_source }}"
+        dest: /srv/
+        mode: '0644'
 
-  - name: Generate Prometheus config from template
-    ansible.builtin.template:
-      src: "{{ prometheus_config_template }}"
-      dest: /prometheus.yml
-      mode: '0644'
+    - name: Generate Grafana data source config from template
+      ansible.builtin.template:
+        src: "{{ grafana_config_template }}"
+        dest: /srv/grafana/provisioning/datasources/all.yml
+        mode: '0644'
 
-  - name: Create prometheus alert configuration file
-    ansible.builtin.copy:
-      dest: /srv/prometheus/prometheus_alerts_rules.yml
-      src: prometheus_alerts_rules.yml
-      mode: '0644'
+    - name: Create Prometheus container
+      community.docker.docker_container:
+        name: prometheus
+        restart_policy: always
+        network_mode: host
+        image: prom/prometheus
+        volumes:
+          # - /prometheus.yml:/etc/prometheus/prometheus.yml
+          - /srv/prometheus:/etc/prometheus
+          - /srv/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+          - prometheus_main_data:/prometheus
+        command: >
+          --config.file=/etc/prometheus/prometheus.yml
+          --storage.tsdb.path=/prometheus
+          --web.console.libraries=/etc/prometheus/console_libraries
+          --web.console.templates=/etc/prometheus/consoles
+          --web.enable-lifecycle
+        published_ports: "9090:9090"
 
-  - name: Create grafana configuration files
-    ansible.builtin.copy:
-      dest: /srv/
-      src: grafana
-      mode: '0644'
+  # --storage.tsdb.path=/prometheus
+          # --web.console.libraries=/etc/prometheus/console_libraries
+          # --web.console.templates=/etc/prometheus/consoles
+          # --web.enable-lifecycle
 
-  - name: Create alertmanager configuration file
-    ansible.builtin.template:
-      dest: /srv/alertmanager/alertmanager.yml
-      src: alertmanager/alertmanager.j2
-      mode: '0644'
-
-  - name: Create Prometheus container
-    community.docker.docker_container:
-      name: prometheus
-      restart_policy: always
-      network_mode: host
-      image: prom/prometheus
-      volumes:
-        - /prometheus.yml:/etc/prometheus/prometheus.yml
-        - /prometheus:/prometheus
-        # - /srv/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-        # - /srv/prometheus/prometheus_alerts_rules.yml:/etc/prometheus/prometheus_alerts_rules.yml
-        # - prometheus_main_data:/prometheus
-      command: >
-        --config.file=/etc/prometheus/prometheus.yml
-      published_ports: "9090:9090"
-
-# --storage.tsdb.path=/prometheus
-        # --web.console.libraries=/etc/prometheus/console_libraries
-        # --web.console.templates=/etc/prometheus/consoles
-        # --web.enable-lifecycle
-      
-  # - name: Create Grafana container
-  #   docker_container:
-  #     name: grafana
-  #     restart_policy: always
-  #     image: grafana/grafana:
-  #     volumes:
-  #       - grafana-data:/var/lib/grafana
-  #       - /srv/grafana/provisioning:/etc/grafana/provisioning
-  #       - /srv/grafana/dashboards:/var/lib/grafana/dashboards
-  #     env:
-  #       GF_AUTH_ANONYMOUS_ENABLED: "true"
-  #       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
-  #     published_ports: "3000:3000"
+    - name: Create Grafana container
+      community.docker.docker_container:
+        name: grafana
+        restart_policy: always
+        image: grafana/grafana
+        volumes:
+          - grafana-data:/var/lib/grafana
+          - /srv/grafana/provisioning:/etc/grafana/provisioning
+          - /srv/grafana/dashboards:/var/lib/grafana/dashboards
+        env:
+          GF_AUTH_ANONYMOUS_ENABLED: "true"
+          GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+        published_ports: "3000:3000"
 
   # - name: Create Alertmanager container
   #   docker_container:
