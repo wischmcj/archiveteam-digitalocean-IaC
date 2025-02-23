@@ -6,7 +6,7 @@ const client = require('prom-client');
 
 const register = client.register
 
-const port = 3000
+const port = 3100
 
 const requestHandler = (request, response) => {
   response.end(register.metrics())
@@ -54,7 +54,7 @@ const ports = []
 
 // add ports sequentially, one for each droplet
 for(var i = 1; i < numberOfPorts + 1; i++) {
-  ports.push(32770)
+  ports.push(8001)
 }
 // Set up basic gauges for data transfer
 const sentGauge = new client.Gauge({
