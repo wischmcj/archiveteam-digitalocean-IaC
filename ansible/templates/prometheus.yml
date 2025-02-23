@@ -14,4 +14,8 @@ scrape_configs:
     fallback_scrape_protocol: PrometheusText1.0.0
     # PrometheusProto, OpenMetricsText0.0.1, OpenMetricsText1.0.0, PrometheusText0.0.4, PrometheusText1.0.0
     static_configs:
-      - targets: ["127.0.0.1:3000"]
+      - targets: ["127.0.0.1:3100"]
+  - job_name: cadvisor
+    scrape_interval: 30s
+    static_configs:
+    - targets: {{ca_nodes}}
