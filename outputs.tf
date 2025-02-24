@@ -1,6 +1,6 @@
 
 output "ips" {
-  value = "${digitalocean_droplet.archiveteam.*.ipv4_address}"
+  value = "${jsonencode(digitalocean_droplet.prometheus.*.ipv4_address[0])}"
 }
 
 output "prometheus_ip" {

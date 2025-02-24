@@ -20,6 +20,12 @@
         mode: '0755'
         state: directory
 
+    # - name: Create Folder /srv/alertmanager if not exist
+    #   ansible.builtin.file:
+    #     path: /srv/alertmanager
+    #     mode: '0755'
+    #     state: directory
+
     - name: Create Folder /srv/grafana if not exist
       ansible.builtin.file:
         path: /srv/grafana
@@ -53,8 +59,7 @@
         volumes:
           # - /prometheus.yml:/etc/prometheus/prometheus.yml
           - /srv/prometheus:/etc/prometheus
-          - /srv/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-          - prometheus_main_data:/prometheus
+          - prometheus_data:/prometheus
         command: >
           --config.file=/etc/prometheus/prometheus.yml
           --storage.tsdb.path=/prometheus
@@ -82,15 +87,15 @@
           GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
         published_ports: "3000:3000"
 
-  # - name: Create Alertmanager container
-  #   docker_container:
-  #     name: alertmanager
-  #     restart_policy: always
-  #     image: prom/alertmanager:
-  #     volumes:
-  #       - alertmanager-data:/data
-  #       - /srv/alertmanager:/config
-  #     command: >
-  #       --config.file=/config/alertmanager.yml 
-  #       --log.level=debug
-  #     published_ports: "9093:9093"
+    # - name: Create Alertmanager container
+    #   community.docker.docker_container:
+    #     name: alertmanager
+    #     restart_policy: always
+    #     image: prom/alertmanager
+    #     volumes:
+    #       - alertmanager-data:/data
+    #       - /srv/alertmanager:/config
+    #     command: >
+    #       --config.file=/config/alertmanager.yml
+    #       --log.level=debug
+    #     published_ports: "9093:9093"
