@@ -6,7 +6,7 @@
     docker_container_name: prometheus
     default_container_image: ubuntu
     default_container_command: sleep 1d
-    prometheus_config_template: "../templates/prometheus.yml"
+    prometheus_config_template: "../roles/observer/templates/prometheus.yml"
     prometheus_config: "/prometheus.yml"
     grafana_config_template: "../roles/observer/templates/grafana/all.yml"
     grafana_source: "../roles/observer/files/grafana"
