@@ -1,0 +1,95 @@
+- name: Target_nodes
+  hosts: all
+  become: true
+  vars:
+    container_count: 1
+    docker_container_name: prometheus
+    default_container_image: ubuntu
+    default_container_command: sleep 1d
+    warrior_env_template: "../templates/env"
+    warrior_script_template: "../templates/start.sh"
+    cadvisor_version: v0.46.0
+    watchtower_version: latest
+    # port: 8001 # used for warrior and metrics svr
+  tasks:
+    # - name: Generate Prometheus config from template
+    #   ansible.builtin.template:
+    #     src: "{{ prometheus_config_template }}"
+    #     dest: "{{ prometheus_config }}"
+    #     mode: '0644'
+
+    - name: Create NodeExporter
+      community.docker.docker_container:
+        name: exporter
+        network_mode: host
+        pid_mode: host
+        restart_policy: always
+        image: prom/node-exporter
+        volumes:
+          - /proc:/host/proc:ro
+          - /sys:/host/sys:ro
+          - /:/rootfs:ro
+          - /:/host:ro,rslave
+        command: >
+          --path.rootfs /host
+          --path.procfs=/host/proc
+          --path.sysfs=/host/sys
+          --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+        published_ports: "9100:9100"
+          # --path.rootfs=/rootfs
+
+    - name: Create cAdvisor
+      community.docker.docker_container:
+        name: cadvisor
+        restart_policy: always
+        image: gcr.io/cadvisor/cadvisor:{{ cadvisor_version }}
+        volumes:
+          - /:/rootfs:ro
+          - /var/run:/var/run:ro
+          - /sys:/sys:ro
+          - /var/lib/docker/:/var/lib/docker:ro
+          - /dev/disk/:/dev/disk:ro
+        published_ports: "9101:8080"
+
+    # - name: Generate Warrior env file from template
+    #   ansible.builtin.template:
+    #     src: "{{ warrior_env_template }}"
+    #     dest: /tmp/env
+    #     mode: '0644'
+
+    # - name: Generate Warrior run script from template
+    #   ansible.builtin.template:
+    #     src: "{{ prometheus_config_template }}"
+    #     dest: /prometheus.yml
+    #     mode: '0644'
+
+    # - name: Create Watchtower
+    #   community.docker.docker_container:
+    #     name: watchtower
+    #     restart_policy: on-failure
+    #     image: containrrr/watchtower:{{ watchtower_version }}
+    #     volumes:
+    #       - /var/run/docker.sock:/var/run/docker.sock
+    #     command: >
+    #       --label-enable 
+    #       --include-restarting 
+    #       --cleanup 
+    #       --interval 3600
+    #     published_ports: "9101:8080"
+
+    # - name: Create archiveteam
+    #   community.docker.docker_container:
+    #     name: archiveteam
+    #     restart_policy: on-failure
+    #     image: atdr.meo.ws/archiveteam/usgovernment-grab
+    #     volumes:
+    #       - /var/run/docker.sock:/var/run/docker.sock
+    #     command: >
+    #       --env-file=/tmp/env
+    #       --publish 8001:8001
+    #       --restart=on-failure
+    #       --label=com.centurylinklabs.watchtower.enable=true
+    #       --log-driver json-file
+    #       --log-opt max-size=50m
+    #       --concurrent 1 penguaman
+    #     published_ports: "8001:8001"
