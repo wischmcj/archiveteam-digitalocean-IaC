@@ -25,22 +25,11 @@ resource "digitalocean_droplet" "prometheus" {
     }
     inline = [
       "mkdir /prometheus || true",
-      "chmod -R 777 /prometheus || true"
+      "chmod -R 777 /prometheus || true",
+      "while sudo lsof /var/lib/dpkg/lock-frontend; do echo 'Waiting for apt to finish...'; sleep 5; done"
     ]
   }
-  provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${self.ipv4_address},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
-  }
 }
-
-output "droplet_ip_addresses" {
-  value = {
-    for droplet in digitalocean_droplet.prometheus:
-    droplet.name => droplet.ipv4_address
-  }
-}
-
-
 
 resource "digitalocean_droplet" "archiveteam" {
   image  = "${var.droplet_image}"
@@ -49,18 +38,12 @@ resource "digitalocean_droplet" "archiveteam" {
   size   = "${var.do_host_type}"
   count  =  1
   # ssh_keys = "${split(",", var.do_ssh_keys)}"
+  depends_on = [digitalocean_droplet.prometheus]
   ssh_keys = [
     data.digitalocean_ssh_key.example.id
   ]
-  connection {
-    host = self.ipv4_address
-    user = "root"
-    type = "ssh"
-    private_key = file(var.do_pvt_key)
-    timeout = "1m"
-  }
   provisioner "remote-exec" {
-    # needed to ensure that drop is available before local-exec
+    # mostly this is here to give the container time to initialize before the next resource runs 
     connection {
       host = self.ipv4_address
       user = "root"
@@ -69,67 +52,51 @@ resource "digitalocean_droplet" "archiveteam" {
       timeout = "1m"
     }
     inline = [
-      "echo 'test'"
-      # "docker stop exporter && docker rm exporter || true",
-      # "docker run -d --name exporter --net=host --pid=host -v '/:/host:ro,rslave'  prom/node-exporter --path.rootfs /host",
-      # "chmod +x /tmp/start.sh",
-      # "/tmp/start.sh",
+      "while sudo lsof /var/lib/dpkg/lock-frontend; do echo 'Waiting for apt to finish...'; sleep 5; done"
     ]
   }
+}
+# Init scripts install docker and the digital ocean agent
+#     the latter sends exe metrics (cpu, bandwidth, etc) to DO
+resource "null_resource" "prometheus_init"{
+  depends_on = [digitalocean_droplet.prometheus,
+                digitalocean_droplet.archiveteam]
+  count=1
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${self.ipv4_address},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
   }
 }
-# setting up file system volume for and 
-# starting the docker image for prometheus on the prometheus node 
 
-resource "null_resource" "prometheus" {
-  count = 1
-  triggers = {
-    ids = "${join(",", digitalocean_droplet.prometheus.*.id)}"
-    prometheus = "${sha1(file("metrics/prometheus.yml"))}"
-    nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
-  }
-  depends_on = [digitalocean_droplet.prometheus ]
-
-  # connection {
-  #   host = "${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)}"
-  # }
-  
-  provisioner "remote-exec" {
-    # command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${self.ipv4_address}' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
-    connection {
-      host ="${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)}"
-      user = "root"
-      type = "ssh"
-      private_key = file(var.do_pvt_key)
-      timeout = "1m"
-    }
-    inline = [
-      "docker stop prometheus && docker rm prometheus || true",
-    ]
-  }
-
-  # provisioner "file" {
-  #   content = templatefile("metrics/prometheus.yml",
-  #   {
-  #     nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
-  #   })
-  #   # content =  module.template_files.files.prom_nodes
-  #   destination = "/prometheus.yml"
-  # }
-# "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
+resource "null_resource" "archiveteam_init"{
+  depends_on = [digitalocean_droplet.archiveteam,
+                null_resource.prometheus_init] # no real dependency, 
+  count=1
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/prometheus.yml"
-    # inline = [
-    #   "docker run -d --name prometheus --restart=always --net=host -v /prometheus.yml:/etc/prometheus/prometheus.yml -v /prometheus:/prometheus prom/prometheus"
-    # ]
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.archiveteam.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
   }
 }
+
+resource "null_resource" "prometheus_setup_as_observer"{
+  depends_on = [digitalocean_droplet.archiveteam,
+                null_resource.prometheus_init] 
+  count=1
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"} ca_nodes=${"${jsonencode(formatlist("%s:9101", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/prometheus.yml"
+  }
+}
+
+resource "null_resource" "archiveteam_setup_as_target"{
+  depends_on = [null_resource.archiveteam_init]
+  count=1
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.archiveteam.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/cadvisor.yml"
+  }
+
 
 resource "null_resource" "warrior" {
   count  = "${var.do_hosts}"
-  depends_on = [digitalocean_droplet.archiveteam]
+  depends_on = [null_resource.archiveteam_setup_as_target,
+                null_resource.prometheus_setup_as_observer]
 
   triggers = {
     host = "${digitalocean_droplet.archiveteam.*.id[count.index]}"
@@ -205,7 +172,6 @@ resource "null_resource" "ws_metrics" {
   }
 
   depends_on = [
-    null_resource.prometheus,
     null_resource.warrior
   ]
 
