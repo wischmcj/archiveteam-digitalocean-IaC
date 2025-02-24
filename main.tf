@@ -68,8 +68,8 @@ resource "null_resource" "prometheus_init"{
 }
 
 resource "null_resource" "archiveteam_init"{
-  depends_on = [digitalocean_droplet.archiveteam,
-                null_resource.prometheus_init] # no real dependency, 
+  depends_on = [digitalocean_droplet.archiveteam]
+                # null_resource.prometheus_init] # no real dependency, 
   count=1
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.archiveteam.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
@@ -81,7 +81,7 @@ resource "null_resource" "prometheus_setup_as_observer"{
                 null_resource.prometheus_init] 
   count=1
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"} ca_nodes=${"${jsonencode(formatlist("%s:9101", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/prometheus.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"} prom_ip=${"${jsonencode(digitalocean_droplet.prometheus.*.ipv4_address[0])}"} ca_nodes=${"${jsonencode(formatlist("%s:9101", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/prometheus.yml"
   }
 }
 
@@ -140,17 +140,17 @@ resource "null_resource" "warrior" {
     destination = "/tmp/start.sh"
   }
 
-  # provisioner "remote-exec" {
-  #   # Stops container named exporter if running 
-  #   # Starts instance of node-exporter, which monitors 
-  #   #  the warrior container, returning metrics to prometheus
-  #   inline = [
-  #     # "docker stop exporter && docker rm exporter || true",
-  #     "docker run -d --name exporter --net=host --pid=host -v '/:/host:ro,rslave'  prom/node-exporter --path.rootfs /host",
-  #     "chmod +x /tmp/start.sh",
-  #     "/tmp/start.sh",
-  #   ]
-  # }
+  provisioner "remote-exec" {
+    # Stops container named exporter if running 
+    # Starts instance of node-exporter, which monitors 
+    #  the warrior container, returning metrics to prometheus
+    inline = [
+      # "docker stop exporter && docker rm exporter || true",
+      # "docker run -d --name exporter --net=host --pid=host -v '/:/host:ro,rslave'  prom/node-exporter --path.rootfs /host",
+      "chmod +x /tmp/start.sh",
+      "/tmp/start.sh",
+    ]
+  }
 }
 
 resource "null_resource" "archiveteam_setup_as_target"{
@@ -165,7 +165,7 @@ resource "null_resource" "prometheus_setup_as_target"{
   depends_on = [null_resource.warrior]
   count=1
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.archiveteam.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/target_nodes.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/target_nodes.yml"
   }
 }
 
@@ -174,7 +174,7 @@ resource "null_resource" "ws_metrics" {
   triggers = {
     ids = "${join(",", digitalocean_droplet.prometheus.*.id)}"
     metrics_script = "${sha1(file("metrics/metrics.js"))}"
-    nodes = "${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"
+    nodes = "${jsonencode(formatlist("%s:9102", digitalocean_droplet.archiveteam.*.ipv4_address))}"
     warriors = "${var.warriors_per_host}"
     warrior_concurrency = "${var.warrior_concurrency}"
   }
@@ -218,7 +218,7 @@ resource "null_resource" "ws_metrics" {
   provisioner "remote-exec" {
     inline = [
       "docker stop metrics && docker rm metrics || true",
-      "docker run -d --restart=always --net=host --name metrics -v /metrics:/usr/src/app -w /usr/src/app node:8 bash -c 'npm install && node metrics.js'",
+      "docker run -d --restart=always --net=host --name metrics --publish 3100:3100 -v /metrics:/usr/src/app -w /usr/src/app node:8 bash -c 'npm install && node metrics.js'",
     ]
   }
 }
