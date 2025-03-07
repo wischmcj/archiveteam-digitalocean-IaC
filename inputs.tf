@@ -9,6 +9,7 @@ variable "warrior_downloader" {}
 variable "warriors_per_host" {}
 variable "do_ssh_keys" {}
 variable "do_hosts" {}
+variable "do_observers" {}
 variable "do_region" {}
 variable "do_host_type" {}
 variable "do_key_password" {}
