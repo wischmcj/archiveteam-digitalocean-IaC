@@ -20,9 +20,9 @@
         state: present
         key: "{{ lookup('file', pub_key) }}"
 
-    # - name: Wait for apt to unlock
-    #   become: true
-    #   ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
+    - name: Wait for apt to unlock
+      become: true
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
 
     - name: Install required system packages
       ansible.builtin.apt:
@@ -54,6 +54,10 @@
     - name: Wait for apt to unlock
       become: true
       ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done;
+
+    - name: Wait for apt to unlock
+      become: true
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
 
     - name: Install docker-ce
       ansible.builtin.apt:

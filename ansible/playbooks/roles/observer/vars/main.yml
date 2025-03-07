@@ -1,0 +1,3 @@
+container_count: 1
+docker_container_name: prometheus
+default_container_image: ubuntu
