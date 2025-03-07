@@ -8,7 +8,7 @@ resource "digitalocean_droplet" "prometheus" {
   name   = "${var.instance_name_prefix}-prometheus"
   region = "${var.do_region}"
   size   = "s-1vcpu-2gb"
-  count  = 1
+  count  = "${var.do_observers}"
   # ssh_keys = "${split(",", var.do_ssh_keys)}"
   # ssh_keys = [data.digitalocean_ssh_key.example.id]
   ssh_keys = [
@@ -36,7 +36,7 @@ resource "digitalocean_droplet" "archiveteam" {
   name   = "${var.instance_name_prefix}-warrior"
   region = "${var.do_region}"
   size   = "${var.do_host_type}"
-  count  =  1
+  count  = "${var.do_hosts}"
   # ssh_keys = "${split(",", var.do_ssh_keys)}"
   depends_on = [digitalocean_droplet.prometheus]
   ssh_keys = [
@@ -61,7 +61,7 @@ resource "digitalocean_droplet" "archiveteam" {
 resource "null_resource" "prometheus_init"{
   depends_on = [digitalocean_droplet.prometheus,
                 digitalocean_droplet.archiveteam]
-  count=1
+  count  = "${var.do_observers}"
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
   }
@@ -70,7 +70,7 @@ resource "null_resource" "prometheus_init"{
 resource "null_resource" "archiveteam_init"{
   depends_on = [digitalocean_droplet.archiveteam]
                 # null_resource.prometheus_init] # no real dependency, 
-  count=1
+  count  = "${var.do_hosts}"
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.archiveteam.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/apt_docker.yml"
   }
@@ -79,9 +79,9 @@ resource "null_resource" "archiveteam_init"{
 resource "null_resource" "prometheus_setup_as_observer"{
   depends_on = [digitalocean_droplet.archiveteam,
                 null_resource.prometheus_init] 
-  count=1
+  count  = "${var.do_observers}"
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"} prom_ip=${"${jsonencode(digitalocean_droplet.prometheus.*.ipv4_address[0])}"} ca_nodes=${"${jsonencode(formatlist("%s:9101", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/prometheus.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},'  --private-key ${var.do_pvt_key} -e 'nodes=${"${jsonencode(formatlist("%s:9100", digitalocean_droplet.archiveteam.*.ipv4_address))}"} prom_ip=${"${jsonencode(digitalocean_droplet.prometheus.*.ipv4_address[0])}"} ca_nodes=${"${jsonencode(formatlist("%s:9101", digitalocean_droplet.archiveteam.*.ipv4_address))}"}' ansible/playbooks/observer.yml"
   }
 }
 
@@ -139,6 +139,22 @@ resource "null_resource" "warrior" {
     })
     destination = "/tmp/start.sh"
   }
+  provisioner "file" {
+    content = file("loop_and_log.sh")
+    destination = "/tmp/loop_and_log.sh"
+  }
+  provisioner "file" {
+    content = file("loop_and_end.sh")
+    destination = "/tmp/loop_and_end.sh"
+  }
+  provisioner "file" {
+    content = file("log_and_kill.sh")
+    destination = "/tmp/log_and_kill.sh"
+  }
+  provisioner "file" {
+    content = file("ip6_archive_us_gov.sh")
+    destination = "/tmp/ip6_archive_us_gov.sh"
+  }
 
   provisioner "remote-exec" {
     # Stops container named exporter if running 
@@ -155,7 +171,7 @@ resource "null_resource" "warrior" {
 
 resource "null_resource" "archiveteam_setup_as_target"{
   depends_on = [null_resource.warrior]
-  count=1
+  count  = "${var.do_hosts}"
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.archiveteam.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/target_nodes.yml"
   }
@@ -163,14 +179,14 @@ resource "null_resource" "archiveteam_setup_as_target"{
 
 resource "null_resource" "prometheus_setup_as_target"{
   depends_on = [null_resource.warrior]
-  count=1
+  count  = "${var.do_observers}"
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${element(digitalocean_droplet.prometheus.*.ipv4_address, count.index)},' --private-key ${var.do_pvt_key} -e 'pub_key=${var.do_pub_key}' ansible/playbooks/target_nodes.yml"
   }
 }
 
 resource "null_resource" "ws_metrics" {
-  count = 1
+  count  = "${var.do_observers}"
   triggers = {
     ids = "${join(",", digitalocean_droplet.prometheus.*.id)}"
     metrics_script = "${sha1(file("metrics/metrics.js"))}"
@@ -222,3 +238,4 @@ resource "null_resource" "ws_metrics" {
     ]
   }
 }
+

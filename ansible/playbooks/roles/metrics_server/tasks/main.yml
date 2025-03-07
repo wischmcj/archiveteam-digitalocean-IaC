@@ -1,0 +1,43 @@
+---
+- name: Install node and npm    # A name to identify the playbook
+  hosts: 1.1.1.1                 # The target host to execute the tasks on
+  tasks:                         # List of tasks to be performed
+  - name: Update apt repo and cache  
+    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 # Update apt repository and cache
+  - name: Install nodejs and npm 
+    apt:                        # Install Node.js and NPM
+      pkg:
+      - nodejs
+      - npm
+
+- name: Create new linux user   
+  hosts: 1.1.1.1                 # The target host to execute the tasks on
+  tasks:                         # List of tasks to be performed
+  - name: Create linux user     
+    user:                       # Create a new Linux user
+      name: arun
+      comment: arun admin
+      group: admin
+
+- name: Deploy nodejs app       
+  hosts: 1.1.1.1                 # The target host to execute the tasks on
+  become: True                   # Switch to the root user for executing tasks
+  become_user: arun              # Set the user as "arun" to perform tasks
+  tasks:                         # List of tasks to be performed
+  - name: unpack the nodejs file  
+    unarchive:                  # Unpack the Node.js app
+      src:
+      dest: /home/arun
+  - name: Install dependencies  
+    npm:                        # Install app dependencies
+      path: /home/arun/packages
+  - name: Start the application 
+    command:                    # Start the Node.js app
+      chdir: /home/arun/packages/app
+      cmd: node server
+    async: 1000                 # Run the command asynchronously
+    poll: 0                     # Do not wait for the command to finish
+  - name: Ensure app is running  
+    shell: ps aux | grep node   # Check if the app is running
+    register: app_status        # Register the output of the command as a variable
+  - debug: msg={{app_status.stdout_lines}} # Print the output of the previous task for debugging purposes
