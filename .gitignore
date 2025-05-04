@@ -25,3 +25,6 @@ crash.*.log
 
 # Ignore transient lock info files created by terraform apply
 .terraform.tfstate.lock.info
+metrics_server/files/package.json
+metrics_server/files/package-lock.json
+test.log
