@@ -1,6 +1,6 @@
 
 output "ips" {
-  value = "${jsonencode(digitalocean_droplet.prometheus.*.ipv4_address[0])}"
+  value = "${jsonencode(digitalocean_droplet.archiveteam.*.ipv4_address)}"
 }
 
 output "prometheus_ip" {
@@ -8,9 +8,13 @@ output "prometheus_ip" {
 }
 
 output "urls" {
-  value ={ for drop in digitalocean_droplet.prometheus:
-             "Prometheus" => "https://${drop.ipv4_address}:9090"}
-}
+  value = [
+          {for drop in digitalocean_droplet.prometheus:
+             "Prometheus" => "http://${drop.ipv4_address}:9090" },
+          {for drop in digitalocean_droplet.prometheus:
+             "Grafana" => "http://${drop.ipv4_address}:3000/dashboards" }
+          ]
+} 
 
 output "ansible_cmds" {
   value ={ for drop in digitalocean_droplet.prometheus:
