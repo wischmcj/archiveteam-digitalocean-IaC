@@ -1,0 +1,135 @@
+- name: Deploy Loki using the local filesystem
+  hosts: loki
+  become: true
+  roles:
+    - role: grafana.grafana.loki
+    - loki_working_path: 
+  vars:
+    loki_http_listen_port: 3102
+    loki_querier:
+      max_concurrent: 16
+      engine:
+        max_look_back_period: 672h
+    loki_storage_config:
+      tsdb_shipper:
+        active_index_directory: "{{ loki_working_path }}/tsdb-index"
+        cache_location: "{{ loki_working_path }}/tsdb-cache"
+      filesystem:
+        directory: "{{ loki_working_path }}/chunks"
+    loki_ingester:
+      wal:
+        enabled: true
+        dir: "{{ loki_working_path }}/wal"
+      lifecycler:
+        address: 127.0.0.1
+        ring:
+          kvstore:
+            store: inmemory
+          replication_factor: 1
+        final_sleep: 0s
+      chunk_idle_period: 1h
+      max_chunk_age: 2h
+      chunk_target_size: 1048576
+      query_store_max_look_back_period: 672h
+    # loki_limits_config:
+    #   split_queries_by_interval: 0
+    #   reject_old_samples: true
+    #   reject_old_samples_max_age: 168h
+    #   max_query_length: 0
+    #   max_query_series: 50000
+    #   retention_period: 672h
+    #   allow_structured_metadata: false
+    #   max_query_lookback: 672h
+    # loki_compactor:
+    #   working_directory: "{{ loki_working_path }}/compactor"
+    #   compaction_interval: 10m
+    #   retention_enabled: true
+    #   retention_delete_delay: 2h
+    #   retention_delete_worker_count: 150
+    #   delete_request_store: filesystem
+    loki_common:
+      path_prefix: "{{ loki_working_path }}"
+      storage:
+        filesystem:
+          rules_directory: "{{ loki_working_path }}/rules"
+      replication_factor: 1
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: inmemory
+    # loki_ruler:
+    #   rule_path: "{{ loki_working_path }}/rules_tmp"
+    #   ring:
+    #     kvstore:
+    #       store: inmemory
+    #   enable_api: true
+    #   enable_alertmanager_v2: true
+    #   alertmanager_url: http://localhost:9093
+    # loki_ruler_alerts:
+    #   - name: Logs.sshd
+    #     rules:
+    #       - alert: SshLoginFailed
+    #         expr: |
+    #           count_over_time({job=~"secure"} |="sshd[" |~": Failed|: Invalid|: Connection closed by authenticating user" | __error__="" [15m]) > 6
+    #         for: 0m
+    #         labels:
+    #           severity: critical
+    #         annotations:
+    #           summary: "{% raw %}SSH authentication failure (instance {{ $labels.instance }}).{% endraw %}"
+    #           description: "{% raw %}Increase of SSH authentication failures in last 15 minutes\\n VALUE = {{ $value }}{% endraw %}"
+  # tasks:
+  #   - name: Install OpenTelemetry Collector
+  #     ansible.builtin.include_role:
+  #       name: opentelemetry_collector
+  #     vars:
+  #       otel_collector_receivers:
+  #         hostmetrics:
+  #           collection_interval: 60s
+  #           scrapers:
+  #             cpu: {}
+  #             disk: {}
+  #             load: {}
+  #             filesystem: {}
+  #             memory: {}
+  #             network: {}
+  #             paging: {}
+  #             process:
+  #               mute_process_name_error: true
+  #               mute_process_exe_error: true
+  #               mute_process_io_error: true
+  #             processes: {}
+
+  #       otel_collector_processors:
+  #         batch:
+  #         resourcedetection:
+  #           detectors: [env, system]
+  #           timeout: 2s
+  #           system:
+  #             hostname_sources: [os]
+  #         transform/add_resource_attributes_as_metric_attributes:
+  #           error_mode: ignore
+  #           metric_statements:
+  #             - context: datapoint
+  #               statements:
+  #                 - set(attributes["deployment.environment"],
+  #                   resource.attributes["deployment.environment"])
+  #                 - set(attributes["service.version"],
+  #                   resource.attributes["service.version"])
+
+  #       otel_collector_exporters:
+  #         prometheusremotewrite:
+  #           endpoint: https://{{ prom_ip }}:9090/api/prom/push
+  #           headers:
+  #             Authorization: 'Basic <base64-encoded-username:password>'
+
+  #       otel_collector_service:
+  #         pipelines:
+  #           metrics:
+  #             receivers: [hostmetrics]
+  #             processors:
+  #               [
+  #                 resourcedetection,
+  #                 transform/add_resource_attributes_as_metric_attributes,
+  #                 batch,
+  #               ]
+  #             exporters: [prometheusremotewrite]
