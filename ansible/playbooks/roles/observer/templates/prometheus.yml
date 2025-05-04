@@ -28,5 +28,6 @@ scrape_configs:
       - targets: {{ca_nodes}}
   - job_name: prom_cadvisor
     scrape_interval: 30s
+    fallback_scrape_protocol: PrometheusText1.0.0
     static_configs:
       - targets: ["127.0.0.1:9101"]
