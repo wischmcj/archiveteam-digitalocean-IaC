@@ -1,0 +1,19 @@
+## archiveteam-infra
+
+Ready to save the web, one archiveteam project at a time? Then this project is for you!
+
+## Installation
+
+Get a DigitalOcean API Token. https://cloud.digitalocean.com/account/api/tokens/new
+
+Upload your ssh key to DigitalOcean. You can do that here https://cloud.digitalocean.com/account/security?i=c84be4 Make a copy of the ssh fingerprint as you need it later.
+
+Copy `terraform.tfvars.dist` to `terraform.tfvars`, filling out the wanted values.
+
+Now run `terraform apply`. Once it's done, you're helping! Congratz.
+
+## Validation
+
+    To confirm docker is installed/running, run 'docker ps -a'
+
+    To confirm digital ocean metrics agent is installed/running, run 'ps aux | grep do-agent'

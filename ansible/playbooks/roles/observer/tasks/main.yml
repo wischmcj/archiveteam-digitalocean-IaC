@@ -1,0 +1,99 @@
+---
+- name: Create Folder /srv/prometheus if not exist
+  ansible.builtin.file:
+    path: /srv/prometheus
+    mode: '0755'
+    state: directory
+
+# - name: Create Folder /srv/alertmanager if not exist
+#   ansible.builtin.file:
+#     path: /srv/alertmanager
+#     mode: '0755'
+#     state: directory
+
+- name: Create Folder /srv/grafana if not exist
+  ansible.builtin.file:
+    path: /srv/grafana
+    mode: '0755'
+    state: directory
+
+- name: Generate Prometheus config from template
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/prometheus.yml"
+    dest: /srv/prometheus/prometheus.yml
+    mode: '0644'
+  
+# - name: Generate Prometheus alert config file
+#   copy:
+#     src: "{{ role_path }}/files/alertrules.yml"
+#     dest: /etc/prometheus/alert.rules.yml
+
+- name: Create Folder /srv/grafana if not exist
+  ansible.builtin.file:
+    path: /srv/grafana
+    mode: '0755'
+    state: directory
+
+- name: Create grafana configuration files
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/grafana"
+    dest: /srv/
+    mode: '0644'
+
+- name: Generate Grafana data source config from template
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/grafana/all.yml"
+    dest: /srv/grafana/provisioning/datasources/all.yml
+    mode: '0644'
+
+- name: Create Prometheus container
+  community.docker.docker_container:
+    name: prometheus
+    restart_policy: always
+    network_mode: host
+    image: prom/prometheus:v3.0.1
+    #docker run -d --name prometheus --publish 9090:9090 --net=host --pid=host -v '/srv/prometheus:/etc/prometheus' -v 'prometheus_data:/prometheus'  prom/prometheus:v3.0.1  --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.console.libraries=/etc/prometheus/console_libraries --web.console.templates=/etc/prometheus/consoles --web.enable-lifecycle --web.enable-admin-api --storage.tsdb.retention.time=36h --storage.tsdb.retention.size=55GB
+    volumes:
+      # - /prometheus.yml:/etc/prometheus/prometheus.yml
+      - /srv/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command: >
+      --config.file=/etc/prometheus/prometheus.yml
+      --storage.tsdb.path=/prometheus
+      --web.console.libraries=/etc/prometheus/console_libraries
+      --web.console.templates=/etc/prometheus/consoles
+      --web.enable-lifecycle
+      --web.enable-admin-api
+      --storage.tsdb.retention.time=36h
+      --storage.tsdb.retention.size=55GB
+    published_ports: "9090:9090"
+      # --storage.tsdb.path=/prometheus
+      # --web.console.libraries=/etc/prometheus/console_libraries
+      # --web.console.templates=/etc/prometheus/consoles
+      # --web.enable-lifecycle
+
+- name: Create Grafana container
+  community.docker.docker_container:
+    name: grafana
+    restart_policy: always
+    image: grafana/grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - /srv/grafana/provisioning:/etc/grafana/provisioning
+      - /srv/grafana/dashboards:/var/lib/grafana/dashboards
+    env:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    published_ports: "3000:3000"
+# - name: Create Alertmanager container
+#   community.docker.docker_container:
+#     name: alertmanager
+#     restart_policy: always
+#     image: prom/alertmanager
+#     volumes:
+#       - alertmanager-data:/data
+#       - /srv/alertmanager:/config
+#     command: >
+#       --config.file=/config/alertmanager.yml
+#       --log.level=debug
+#     published_ports: "9093:9093"

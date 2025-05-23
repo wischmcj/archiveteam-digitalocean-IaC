@@ -1,0 +1,28 @@
+auth_enabled: false
+server:
+  http_listen_port: 3100
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+  chunk_idle_period: 5m
+  max_chunk_age: 1h
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/cache
+    shared_store: filesystem
+  filesystem:
+    directory: /loki/chunks
+
+    docker run  -v /srv/alloy/alloy:/etc/alloy/config.alloy  -p 3200:3200  grafana/alloy:latest    run --server.http.listen-addr=209.97.146.232:3200 --storage.path=/var/lib/alloy/data    /etc/alloy/config.alloy

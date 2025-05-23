@@ -1,0 +1,86 @@
+- name: Docker-install
+  hosts: all
+  become: true
+  vars:
+    container_count: 1
+    default_container_name: docker
+    default_container_image: ubuntu
+    default_container_command: sleep 1d
+  tasks:
+
+    - name: Add wischmcj to 'sudo'
+      ansible.builtin.user:
+        name: wischmcj
+        groups: sudo
+        state: present
+
+    - name: Add SSH key to 'wischmcj'
+      ansible.posix.authorized_key:
+        user: wischmcj
+        state: present
+        key: "{{ lookup('file', pub_key) }}"
+
+    - name: Wait for apt to unlock
+      become: true
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
+
+    - name: Install required system packages
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+
+    - name: Wait for apt to unlock
+      become: true
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
+
+    - name: Add Docker GPG apt Key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      ansible.builtin.apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Wait for apt to unlock
+      become: true
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done;
+
+    - name: Wait for apt to unlock
+      become: true
+      ansible.builtin.shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
+
+    - name: Install docker-ce
+      ansible.builtin.apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Add DO agent apt key
+      ansible.builtin.apt_key:
+        url: https://repos.insights.digitalocean.com/sonar-agent.asc
+        state: present
+
+    - name: Add DO agent repository
+      ansible.builtin.apt_repository:
+        repo: deb https://repos.insights.digitalocean.com/apt/do-agent main main
+        filename: digitalocean-agent
+        state: present
+
+    - name: Install DO agent
+      ansible.builtin.apt:
+        pkg: do-agent
+        state: present

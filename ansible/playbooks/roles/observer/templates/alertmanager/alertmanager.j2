@@ -1,0 +1,15 @@
+route:
+  receiver: "mail"
+  repeat_interval: 4h
+  group_by: [ alertname ]
+
+{% comment %} receivers:
+  - name: "mail"
+    email_configs:
+    - to: cjwischmeyer@gmail.com
+      from: cjwischmeyer@gmail.com
+      smarthost: smtp.gmail.com:587
+      auth_username: cjwischmeyer@gmail.com
+      auth_identity: cjwischmeyer@gmail.com
+      auth_password: password
+      send_resolved: true {% endcomment %}
