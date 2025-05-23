@@ -67,13 +67,13 @@ The Ansible playbooks handle the configuration and setup of both observer and wa
   - Sets up scraping targets for all nodes
   - Configures retention and storage
 
-- **Grafana Setup**
+- **Grafana Setup**wischmcj/simple-crawler/
   - Installs Grafana
   - Configures dashboards
   - Sets up data sources
 
 - **Node Exporter**
-  - Installs and configures Node Exporter
+  - Installs and configures Node Exporterwischmcj/simple-crawler/
   - Exports system metrics
   - Configures security settings
 
@@ -110,4 +110,4 @@ The Ansible playbooks handle the configuration and setup of both observer and wa
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request!
