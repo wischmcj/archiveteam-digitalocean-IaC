@@ -2,6 +2,8 @@
 
 This repository contains the infrastructure code for deploying and managing ArchiveTeam Warrior instances along with their monitoring infrastructure. The codebase is primarily built using Terraform for infrastructure provisioning and Ansible for configuration management.
 
+![Process Diagram](./archiveteam_process.png)
+
 ## High-Level Summary
 
 This codebase provides a complete infrastructure-as-code solution for deploying, managing, and monitoring Docker containers on Digital ocean servers at scale. The result is a modular monitoring stack that supports multiple observer and target nodes, each capable of hosting multiple concurently running docker containers. It is designed to run Archive team scropts in particualar, but can easily be configured to run any given target image.
